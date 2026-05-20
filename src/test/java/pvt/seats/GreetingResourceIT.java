@@ -1,4 +1,4 @@
-package com.example;
+package pvt.seats;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 

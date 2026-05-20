@@ -1,4 +1,4 @@
-package com.example;
+package pvt.seats;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
