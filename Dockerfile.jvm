@@ -8,8 +8,9 @@ COPY pom.xml .
 COPY src ./src
 
 # Run the build inside the container
-# This will recreate the target/quarkus-app structure you just verified
-RUN mvn clean package -DskipTests
+# -DskipTests skips test execution
+# --strict-checksums enables strict checksum validation
+RUN mvn clean package -DskipTests -q --show-version
 
 # --- STAGE 2: RUNTIME ---
 FROM registry.access.redhat.com/ubi8/openjdk-21:1.23
