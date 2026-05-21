@@ -1,6 +1,7 @@
 package pvt.seats.api.graphql;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.graphql.GraphQLApi;
+import org.eclipse.microprofile.graphql.Mutation;
 import org.eclipse.microprofile.graphql.Query;
 import pvt.seats.persistance.dto.SeatStatusDto;
 import pvt.seats.persistance.entity.BookingEntity;
@@ -82,6 +84,41 @@ public class SeatGraphQlApi {
         };
     }
 
+    @Mutation("updateBookingStatus")
+    @Transactional
+    public UpdateBookingStatusResponse updateBookingStatus(UUID bookingId, String status) {
+        BookingEntity booking = BookingEntity.findById(bookingId);
+        if (booking == null) {
+            return new UpdateBookingStatusResponse(null, "FAILED", "Booking not found.");
+        }
+
+        BookingStatusEn newStatus;
+        try {
+            newStatus = BookingStatusEn.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return new UpdateBookingStatusResponse(null, "FAILED", "Invalid status: " + status);
+        }
+
+        // Validate status transitions
+        if ((booking.status == BookingStatusEn.CANCELLED || booking.status == BookingStatusEn.EXPIRED)
+                && newStatus != BookingStatusEn.CANCELLED && newStatus != BookingStatusEn.EXPIRED) {
+            return new UpdateBookingStatusResponse(null, "FAILED",
+                    "Cannot transition from " + booking.status + " to " + newStatus);
+        }
+
+        booking.status = newStatus;
+
+        // When moving to HELD or PENDING, reset the expiry to 10 minutes from now
+        if (newStatus == BookingStatusEn.HELD || newStatus == BookingStatusEn.PENDING) {
+            booking.expiresAt = OffsetDateTime.now().plusMinutes(10);
+        }
+
+        booking.persistAndFlush();
+
+        return new UpdateBookingStatusResponse(booking.id, "SUCCESS", null);
+    }
+
+    public record UpdateBookingStatusResponse(UUID bookingId, String result, String error) {}
 
 }
 

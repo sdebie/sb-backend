@@ -5,6 +5,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -13,6 +14,7 @@ import jakarta.ws.rs.core.Response;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import pvt.seats.persistance.dto.HoldSeatRequestDto;
+import pvt.seats.persistance.dto.UpdateBookingStatusDto;
 import pvt.seats.persistance.entity.BookingEntity;
 import pvt.seats.persistance.entity.GuestEntity;
 import pvt.seats.persistance.entity.SeatEntity;
@@ -111,9 +113,59 @@ public class BookingRestApi {
         booking.persistAndFlush();
 
         return Response.noContent().build();
-    }
+     }
 
-    /** Minimal response body carrying the new booking ID back to the frontend. */
-    public record HoldResponse(UUID bookingId) {}
-}
+     /**
+      * Update the status of a booking.
+      * Allows transitions between booking statuses (e.g., HELD → PENDING → CONFIRMED, or any status → CANCELLED).
+      * Returns 200 with the updated booking on success, or 404/400/409 on failure.
+      */
+     @PUT
+     @Path("/{bookingId}/status")
+     @Transactional
+     public Response updateBookingStatus(@PathParam("bookingId") UUID bookingId, UpdateBookingStatusDto request) {
+         if (request == null || request.status == null) {
+             return Response.status(Response.Status.BAD_REQUEST)
+                     .entity("status is required.")
+                     .build();
+         }
+
+         BookingEntity booking = BookingEntity.findById(bookingId);
+         if (booking == null) {
+             return Response.status(Response.Status.NOT_FOUND)
+                     .entity("Booking not found.")
+                     .build();
+         }
+
+         BookingStatusEn newStatus;
+         try {
+             newStatus = BookingStatusEn.valueOf(request.status.toUpperCase());
+         } catch (IllegalArgumentException e) {
+             return Response.status(Response.Status.BAD_REQUEST)
+                     .entity("Invalid status: " + request.status)
+                     .build();
+         }
+
+         // Optional: Validate status transitions
+         // For now, allow any transition (you can add validation logic here)
+         // Example: Don't allow transitioning from CANCELLED or EXPIRED to other statuses
+         if ((booking.status == BookingStatusEn.CANCELLED || booking.status == BookingStatusEn.EXPIRED)
+                 && newStatus != BookingStatusEn.CANCELLED && newStatus != BookingStatusEn.EXPIRED) {
+             return Response.status(Response.Status.CONFLICT)
+                     .entity("Cannot transition from " + booking.status + " to " + newStatus)
+                     .build();
+         }
+
+         booking.status = newStatus;
+         booking.persistAndFlush();
+
+         return Response.ok(new BookingStatusResponse(booking.id, booking.status.name())).build();
+     }
+
+     /** Minimal response body carrying the new booking ID back to the frontend. */
+     public record HoldResponse(UUID bookingId) {}
+
+     /** Response body for booking status update. */
+     public record BookingStatusResponse(UUID bookingId, String status) {}
+ }
 

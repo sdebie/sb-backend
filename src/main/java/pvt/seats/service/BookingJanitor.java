@@ -17,10 +17,11 @@ public class BookingJanitor {
     public void releaseExpiredReservations() {
         OffsetDateTime now = OffsetDateTime.now();
 
-        long newlyExpiredHeldCount = BookingEntity.update(
-                "status = ?1 where status = ?2 and expiresAt < ?3",
+        long newlyExpiredCount = BookingEntity.update(
+                "status = ?1 where status in (?2, ?3) and expiresAt < ?4",
                 BookingStatusEn.EXPIRED,
                 BookingStatusEn.HELD,
+                BookingStatusEn.PENDING,
                 now);
 
         long cleanedExpiredCount = BookingEntity.delete(
@@ -28,10 +29,10 @@ public class BookingJanitor {
                 BookingStatusEn.EXPIRED,
                 now);
 
-        if (newlyExpiredHeldCount > 0 || cleanedExpiredCount > 0) {
+        if (newlyExpiredCount > 0 || cleanedExpiredCount > 0) {
             log.info(
-                    "Booking cleanup complete: held->expired={}, expired removed={}",
-                    newlyExpiredHeldCount,
+                    "Booking cleanup complete: expired from held/pending={}, expired removed={}",
+                    newlyExpiredCount,
                     cleanedExpiredCount);
         }
     }
