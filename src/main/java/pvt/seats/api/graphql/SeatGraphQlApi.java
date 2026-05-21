@@ -48,7 +48,9 @@ public class SeatGraphQlApi {
                         seat.seatRow,
                         seat.seatNumber,
                         seat.handicapAccessible,
-                        resolveStatus(latestBookingBySeat.get(seat.id))
+                        resolveStatus(latestBookingBySeat.get(seat.id)),
+                        seat.seatType,
+                        seat.price
                 ))
                 .sorted(Comparator
                         .comparing((SeatStatusDto dto) -> dto.seatRow)

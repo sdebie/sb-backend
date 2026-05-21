@@ -17,8 +17,14 @@ CREATE TABLE if not exists seats (
                        seat_row VARCHAR(5) NOT NULL,       -- e.g., 'A', 'B', 'C'
                        seat_number INT NOT NULL,           -- e.g., 1, 2, 3
                        is_handicap_accessible BOOLEAN DEFAULT FALSE,
+                       seat_type VARCHAR(20) NOT NULL DEFAULT 'STANDARD',  -- e.g., 'STANDARD', 'VIP'
+                       price NUMERIC(10, 2) NOT NULL DEFAULT 150.00,        -- ticket price in ZAR
                        UNIQUE (seat_row, seat_number)       -- Prevents duplicate seat configurations
 );
+
+-- Add seat_type and price to seats if upgrading an existing DB
+ALTER TABLE seats ADD COLUMN IF NOT EXISTS seat_type VARCHAR(20) NOT NULL DEFAULT 'STANDARD';
+ALTER TABLE seats ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) NOT NULL DEFAULT 150.00;
 
 
 -- 3. BOOKINGS TABLE
